@@ -1,5 +1,6 @@
 #pragma once
-#include "EnvelopBase.hpp"
+#include <span>
+#include "../components/EnvelopeChecker/include/EnvelopeBase.hpp"
 
 template<typename T>
 struct EnvelopeArrayConfig : public EnvelopeBaseConfig<T> {
