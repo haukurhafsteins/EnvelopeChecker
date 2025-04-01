@@ -15,12 +15,14 @@ enum class EnvelopeArrayStatus {
     OK,
     AnyAboveUpperLimit,
     AnyBelowLowerLimit,
-    ViolationTimeout
+    ViolationTimeout,
+    NoReferenceSet,
+    SizeMismatch
 };
 
 enum class EnvelopeMarginMode {
-    Absolute,
-    Percent
+    Percent,
+    Absolute
 };
 
 template<typename T>
