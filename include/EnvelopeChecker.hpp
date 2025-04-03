@@ -4,7 +4,7 @@
 template<typename T>
 class EnvelopeChecker {
 public:
-    void setConfig(const EnvelopeBaseConfig<T>& cfg) { config = cfg; }
+    void setConfig(const EnvelopeBaseConfig& cfg) { config = cfg; }
 
     void setReference(T ref) {
         reference = ref;
@@ -13,11 +13,11 @@ public:
     }
 
     EnvelopeStatus check(T value) {
-        T upperMargin = computeEnvelopeMargin(config, reference, config.marginUpper);
-        T lowerMargin = computeEnvelopeMargin(config, reference, config.marginLower);
+        double upperMargin = computeEnvelopeMargin(config, reference, config.marginUpper);
+        double lowerMargin = computeEnvelopeMargin(config, reference, config.marginLower);
 
-        T upper = std::min(reference + upperMargin, config.clampMax);
-        T lower = std::max(reference - lowerMargin, config.clampMin);
+        T upper = std::min(reference + static_cast<T>(upperMargin), config.clampMax);
+        T lower = std::max(reference - static_cast<T>(lowerMargin), config.clampMin);
 
         if (value > upper)
             lastStatus = EnvelopeStatus::AboveUpperLimit;
@@ -42,8 +42,8 @@ public:
     }
 
     std::pair<T, T> getEnvelopeBounds() const {
-        T upperMargin = computeEnvelopeMargin(config, reference, config.marginUpper);
-        T lowerMargin = computeEnvelopeMargin(config, reference, config.marginLower);
+        double upperMargin = computeEnvelopeMargin(config, reference, config.marginUpper);
+        double lowerMargin = computeEnvelopeMargin(config, reference, config.marginLower);
         return {
             std::max(reference - lowerMargin, config.clampMin),
             std::min(reference + upperMargin, config.clampMax)
@@ -53,7 +53,7 @@ public:
     EnvelopeStatus getStatus() const { return lastStatus; }
 
 private:
-    EnvelopeBaseConfig<T> config{};
+    EnvelopeBaseConfig config{};
     T reference{};
     T violationTimer = T(0);
     EnvelopeStatus lastStatus = EnvelopeStatus::OK;

@@ -3,7 +3,7 @@
 #include "../components/EnvelopeChecker/include/EnvelopeBase.hpp"
 
 template<typename T>
-struct EnvelopeArrayConfig : public EnvelopeBaseConfig<T> {
+struct EnvelopeArrayConfig : public EnvelopeBaseConfig {
     T maxAllowedFailureRatio = T(0); // 0.1 = 10%
 };
 
@@ -21,7 +21,7 @@ public:
         return referenceBuffer.size();
     }
 
-    bool setReferenceValues(std::span<const T> values) {
+    bool setReference(std::span<const T> values) {
         if (values.size() != referenceBuffer.size()) {
             return false; // Size mismatch
         }
@@ -29,7 +29,15 @@ public:
         return true;
     }
 
-    EnvelopeArrayStatus check(const std::span<const T>& sample) {
+    bool getReference(std::span<T> out) const {
+        if (out.size() != referenceBuffer.size()) {
+            return false; // Size mismatch
+        }
+        std::copy(referenceBuffer.begin(), referenceBuffer.end(), out.begin());
+        return true;
+    }
+
+    EnvelopeArrayStatus check(const std::span<const T>& sample, size_t& above, size_t& below) {
         if (reference.empty())
             return EnvelopeArrayStatus::NoReferenceSet;
         if (sample.size() != reference.size())
@@ -38,14 +46,14 @@ public:
         above = 0, below = 0;
 
         for (size_t i = 0; i < sample.size(); ++i) {
-            T upper, lower;
+            double upper, lower;
             calculateMargin(reference[i], upper, lower);
 
             if (sample[i] > upper) ++above;
             else if (sample[i] < lower) ++below;
         }
 
-        const double failRatio = static_cast<T>(above + below) / static_cast<T>(sample.size());
+        const double failRatio = static_cast<double>(above + below) / static_cast<double>(sample.size());
         if (failRatio > config.maxAllowedFailureRatio) {
             lastStatus = (above >= below)
                        ? EnvelopeArrayStatus::AnyAboveUpperLimit
@@ -57,8 +65,8 @@ public:
         return lastStatus;
     }
 
-    EnvelopeArrayStatus check(const std::vector<T>& sample) {
-        return check(std::span<const T>(sample));
+    EnvelopeArrayStatus check(const std::vector<T>& sample,  size_t& above, size_t& below) {
+        return check(std::span<const T>(sample), above, below);
     }
 
     std::vector<size_t> getFailedBinIndices(std::span<const T> sample) const {
@@ -68,7 +76,7 @@ public:
         std::vector<size_t> failed;
     
         for (size_t i = 0; i < sample.size(); ++i) {
-            T upper, lower;
+            double upper, lower;
             calculateMargin(reference[i], upper, lower);
     
             if (sample[i] > upper || sample[i] < lower) {
@@ -82,28 +90,17 @@ public:
     bool getEnvelope(std::span<T> outHigh, std::span<T> outLow, size_t size) const {
         if (size != reference.size()) {
             printf("!!! Warning: Size mismatch in getEnvelope !!!\n");
-            return false; // Size mismatch
+            return false;
         }
         for (size_t i = 0; i < size; ++i) {
-            T upper, lower;
+            double upper, lower;
             calculateMargin(reference[i], upper, lower);
-            outHigh[i] = upper;
-            outLow[i] = lower;
+            outHigh[i] = static_cast<T>(upper);
+            outLow[i] = static_cast<T>(lower);
         }
         return true;
     }
     
-    void getFailureRatio(double& above, double& below) const {
-        double total = reference.size();
-        if (total == 0) {
-            printf("!!! Warning: No reference values set !!!\n");
-            above = below = 0;
-            return;
-        }
-        above = static_cast<double>(this->above) / total;
-        below = static_cast<double>(this->below) / total;
-    }
-
     EnvelopeArrayStatus update(T deltaTime) {
         if (lastStatus == EnvelopeArrayStatus::OK) {
             violationTimer = T(0);
@@ -119,7 +116,7 @@ public:
     EnvelopeArrayStatus getStatus() const { return lastStatus; }
 
 private:
-    void calculateMargin(T ref, T& upper, T& lower) const {
+    void calculateMargin(double ref, double& upper, double& lower) const {
         upper = std::min(ref + computeEnvelopeMargin(config, ref, config.marginUpper), config.clampMax);
         lower = std::max(ref - computeEnvelopeMargin(config, ref, config.marginLower), config.clampMin);
     }
@@ -129,6 +126,5 @@ private:
     std::span<T> referenceBuffer;   // Memory owned by caller, but managed here
     T violationTimeout = T(0);
     T violationTimer = T(0);
-    size_t above = 0, below = 0; 
     EnvelopeArrayStatus lastStatus = EnvelopeArrayStatus::OK;
 };
