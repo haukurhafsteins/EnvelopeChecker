@@ -25,22 +25,21 @@ enum class EnvelopeMarginMode {
     Absolute
 };
 
-template<typename T>
 struct EnvelopeBaseConfig {
-    EnvelopeMarginMode mode = EnvelopeMarginMode::Absolute;
-    T marginUpper = T(0);
-    T marginLower = T(0);
-    T clampMin = std::numeric_limits<T>::lowest();
-    T clampMax = std::numeric_limits<T>::max();
-    T minMargin = T(0);
-    T violationTimeout = T(0); // max time out of bounds
+    EnvelopeMarginMode mode = EnvelopeMarginMode::Percent;
+    double marginUpper = 0;
+    double marginLower = 0;
+    double clampMin = __DBL_MIN__;
+    double clampMax = __DBL_MAX__;
+    double minMargin = __DBL_MIN__;
+    double violationTimeout = 0; // max time out of bounds
 };
 
-template<typename T>
-[[nodiscard]] inline T computeEnvelopeMargin(const EnvelopeBaseConfig<T>& config, T ref, T margin) {
+[[nodiscard]] inline double computeEnvelopeMargin(const EnvelopeBaseConfig& config, double ref, double margin) {
+    // Calculated margin will be clamped to minMargin
     if (config.mode == EnvelopeMarginMode::Percent) {
-        return std::max(std::abs(ref) * margin / T(100), config.minMargin);
+        return std::max(std::fabs(ref * margin / 100.0), config.minMargin);
     } else {
-        return std::max(margin, config.minMargin);
+        return std::fmax(margin, config.minMargin);
     }
 }
